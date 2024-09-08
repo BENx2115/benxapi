@@ -9,24 +9,25 @@ const https = require('https');
  * @param {object} data 
  * @returns 
  */
-async function request(method = 'GET', token, url, data = {}) {
+async function request(method = 'GET', token, url, data = {}, maxBytes = 0, returnData = true) {
     return new Promise((resolve, reject) => {
         try {
             const urlData = new URL(url);
-
             const protocol = urlData.protocol === 'http:' ? http : https;
+            let downloadedSize = 0;
 
             const options = {
                 hostname: urlData.hostname,
-                port: urlData.port || urlData.protocol === 'https:' ? 443 : 80,
+                port: urlData.port || (urlData.protocol === 'https:' ? 443 : 80),
                 path: urlData.pathname,
                 method: method,
                 rejectUnauthorized: false,
                 secureProtocol: 'TLSv1_2_method',
                 headers: {
-                    'Authorization': token,
+                    'Accept-Encoding': 'gzip, deflate, br',
+                    ...token ? { 'Authorization': token } : {},
                     'Content-Type': 'application/json',
-                    'Accept-Encoding': 'gzip, deflate, br'
+                    ...maxBytes > 0 ? { 'Range': `bytes=0-${maxBytes}` } : {}
                 },
             };
 
@@ -41,19 +42,40 @@ async function request(method = 'GET', token, url, data = {}) {
                     stream = res.pipe(zlib.createBrotliDecompress());
                 }
 
-                let response = '';
-                stream.on('data', (chunk) => {
-                    response += chunk;
-                });
+                if (returnData && maxBytes === 0) {
+                    let response = [];
+                    stream.on('data', (chunk) => {
+                        response.push(chunk);
+                    });
 
-                stream.on('end', () => {
-                    try {
-                        const data = JSON.parse(response);
-                        resolve({ req, res, data });
-                    } catch (error) {
-                        resolve({ req, res, data: response });
-                    }
-                });
+                    stream.on('end', () => {
+                        const buffer = Buffer.concat(response);
+                        try {
+                            const data = JSON.parse(buffer.toString());
+                            resolve({ req, res, data });
+                        } catch (error) {
+                            resolve({ req, res, data: buffer.toString() });
+                        }
+                    });
+                } else if (maxBytes > 0) {
+                    let response = [];
+                    stream.on('data', (chunk) => {
+                        downloadedSize += chunk.length;
+                        if (downloadedSize > maxBytes) {
+                            req.destroy();
+                            resolve({ req, res, data: Buffer.concat(response) });
+                        } else {
+                            response.push(chunk);
+                        }
+                    });
+
+                    stream.on('end', () => {
+                        resolve({ req, res, data: Buffer.concat(response) });
+                    });
+                } else {
+                    res.on('data', () => { });
+                    resolve({ req, res });
+                }
             });
 
             req.on('error', (error) => {
@@ -61,7 +83,9 @@ async function request(method = 'GET', token, url, data = {}) {
             });
 
             if (method !== 'GET' && data) {
-                req.write(JSON.stringify(data));
+                const postData = JSON.stringify(data);
+                options.headers['Content-Length'] = Buffer.byteLength(postData);
+                req.write(postData);
             }
 
             req.end();

@@ -1,11 +1,21 @@
 {
   "name": "benxapi",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "A simple module that makes it easier to query data from an API.",
   "main": "index.js",
   "scripts": {
     "test": "node test.js"
   },
-  "author": "benx2115",
-  "license": "ISC"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BENx2115/benxapi.git"
+  },
+  "author": {
+    "name": "BENx2115",
+    "url": "https://github.com/BENx2115/"
+  },
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/BENx2115/benxapi/issues"
+  }
 }
