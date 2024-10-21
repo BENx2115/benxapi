@@ -1,8 +1,9 @@
 {
   "name": "benxapi",
-  "version": "1.2.0",
+  "version": "1.2.2",
   "description": "A simple module that makes it easier to query data from an API.",
   "main": "index.js",
+  "types": "index.d.ts",
   "scripts": {
     "test": "node test.js"
   },

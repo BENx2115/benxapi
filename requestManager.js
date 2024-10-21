@@ -19,7 +19,7 @@ async function request(method = 'GET', token, url, data = {}, maxBytes = 0, retu
             const options = {
                 hostname: urlData.hostname,
                 port: urlData.port || (urlData.protocol === 'https:' ? 443 : 80),
-                path: urlData.pathname,
+                path: urlData.pathname + (urlData.search || ''),
                 method: method,
                 rejectUnauthorized: false,
                 secureProtocol: 'TLSv1_2_method',
@@ -82,7 +82,7 @@ async function request(method = 'GET', token, url, data = {}, maxBytes = 0, retu
                 reject(error);
             });
 
-            if (method !== 'GET' && data) {
+            if (!['GET', 'DELETE'].includes(method) && data) {
                 const postData = JSON.stringify(data);
                 options.headers['Content-Length'] = Buffer.byteLength(postData);
                 req.write(postData);
